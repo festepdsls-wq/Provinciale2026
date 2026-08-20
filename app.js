@@ -146,7 +146,7 @@ function extractDataTable(rows, maxRows = 80) {
 
 /** Righe DATA|COPERTI|$/PASTO|INCASSO -> array oggetti puliti (mantiene anche le righe vuote, per non rompere l'allineamento posizionale con l'altro anno) */
 function mapDailyRows(rows) {
-  return extractDataTable(rows)
+  const mapped = extractDataTable(rows)
     .map((r) => {
       const dataLabel = (r[0] || "").trim();
       const parsed = parseDayLabel(dataLabel);
@@ -161,6 +161,32 @@ function mapDailyRows(rows) {
       };
     })
     .filter((r) => !/totale/i.test(r.dataLabel));
+  return fillMissingDateKeys(mapped);
+}
+
+/**
+ * Google a volte esporta vuota l'etichetta data di una riga (es. la riga "P" di un
+ * turno pranzo), pur mantenendo intatti coperti/incasso. Quando capita, la riga
+ * orfana con dati compare sempre subito PRIMA della riga con la data vera dello
+ * stesso giorno: le assegniamo quindi la stessa data, per poterla sommare correttamente.
+ */
+function fillMissingDateKeys(rows) {
+  for (let i = 0; i < rows.length; i++) {
+    const row = rows[i];
+    const hasData = row.coperti > 0 || row.incasso > 0;
+    if (!hasData || row.dateKey) continue;
+    for (let j = i + 1; j < rows.length; j++) {
+      const hasOwnData = rows[j].coperti > 0 || rows[j].incasso > 0;
+      if (rows[j].dateKey) {
+        row.dateKey = rows[j].dateKey;
+        row.displayLabel = rows[j].displayLabel;
+        row.turno = "pranzo";
+        break;
+      }
+      if (hasOwnData) break; // non superare un'altra riga con dati propri
+    }
+  }
+  return rows;
 }
 
 /**
