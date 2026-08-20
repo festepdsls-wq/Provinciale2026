@@ -375,6 +375,10 @@ function fmtInt(n) {
 let LAST_DATA = null;
 let RANK_MODE = { piatti: "nr", bibite: "nr" };
 
+// Date con doppio turno (pranzo+cena) note in anticipo — il tag "2 turni" compare
+// sempre per queste, indipendentemente da come arrivano i dati dal foglio.
+const DOUBLE_TURNO_DATES = ["06/09", "13/09"];
+
 // Modalità diagnostica: apri l'app con ?debug=1 in fondo all'URL per vedere i dati grezzi ricevuti.
 const DEBUG_MODE = new URLSearchParams(location.search).get("debug") === "1";
 if (DEBUG_MODE) {
@@ -449,7 +453,10 @@ function renderComparisonTable() {
     .map((r) => {
       const isToday = r.dateKey === tKey;
       const { arrow, cls } = diffBits(r.diff);
-      const turnoTag = r.turni26 > 1 ? '<span class="turno-tag">2 turni</span>' : "";
+      const turnoTag =
+        DOUBLE_TURNO_DATES.includes(r.dateKey) || r.turni26 > 1
+          ? '<span class="turno-tag">2 turni</span>'
+          : "";
       return `
         <div class="cmp-row ${isToday ? "is-today" : ""}">
           <div class="c-day">${r.displayLabel}${turnoTag}</div>
