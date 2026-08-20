@@ -191,28 +191,30 @@ function fillMissingDateKeys(rows) {
 
 /**
  * Somma automaticamente le righe che condividono la stessa data di calendario
- * (es. pranzo + cena scritti su due righe separate, con o senza "P"), mantenendo
- * l'ordine di comparsa. Le righe senza una data riconoscibile restano singole,
- * così l'allineamento posizionale con l'altro anno resta intatto.
+ * (es. pranzo + cena scritti su due righe separate, con o senza "P"). A differenza
+ * di una versione precedente, NON rimuove righe dall'array: la seconda riga dello
+ * stesso giorno viene azzerata e "assorbita" nella prima, ma resta al suo posto —
+ * così la lunghezza dell'array non cambia mai e l'allineamento posizionale con
+ * l'altro anno (fondamentale per il confronto 2026/2025) resta sempre intatto.
  */
 function groupByDate(rows) {
-  const out = [];
+  const out = rows.map((r) => ({ ...r, turni: 1 }));
   const indexByKey = new Map();
-  for (const row of rows) {
-    if (!row.dateKey) {
-      out.push({ ...row, turni: 1 });
-      continue;
-    }
+  for (let i = 0; i < out.length; i++) {
+    const row = out[i];
+    if (!row.dateKey) continue;
     if (indexByKey.has(row.dateKey)) {
-      const idx = indexByKey.get(row.dateKey);
-      out[idx].coperti += row.coperti;
-      out[idx].incasso += row.incasso;
-      out[idx].turni += 1;
+      const targetIdx = indexByKey.get(row.dateKey);
+      out[targetIdx].coperti += row.coperti;
+      out[targetIdx].incasso += row.incasso;
+      out[targetIdx].turni += 1;
       // tiene l'etichetta senza eventuale "P", più pulita da mostrare
-      if (row.turno === "cena") out[idx].displayLabel = row.displayLabel;
+      if (row.turno === "cena") out[targetIdx].displayLabel = row.displayLabel;
+      // azzera la riga assorbita, ma la lascia al suo posto nell'array
+      row.coperti = 0;
+      row.incasso = 0;
     } else {
-      indexByKey.set(row.dateKey, out.length);
-      out.push({ ...row, turni: 1 });
+      indexByKey.set(row.dateKey, i);
     }
   }
   return out;
