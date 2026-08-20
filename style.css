@@ -1,0 +1,354 @@
+@import url("https://fonts.googleapis.com/css2?family=Anton&family=Manrope:wght@500;600;700;800&display=swap");
+
+:root {
+  /* Palette allineata al logo ufficiale FestUnità 2026 */
+  --rosso: #c2030e;         /* rosso brand: header, tabbar, accenti */
+  --rosso-scuro: #8c0409;   /* rosso scuro: sfumatura header/tabbar */
+  --rosso-tint: #fdecec;    /* rosso tenue per sfondi leggeri (banner oggi) */
+  --bg: #f6f4f1;            /* sfondo principale chiaro */
+  --card: #ffffff;          /* sfondo card */
+  --ink: #201417;           /* testo principale scuro */
+  --ink-soft: #6b5d5f;      /* testo secondario */
+  --ochre: #e0a63b;         /* accento oro (tag pranzo) */
+  --navy: #0b1f4a;          /* tab selezionato: blu scuro */
+  --navy-line: #16336e;
+  --up: #1e8a45;            /* verde differenza positiva (leggibile su bianco) */
+  --down: #c62828;          /* rosso differenza negativa */
+  --line: rgba(0, 0, 0, 0.08);
+  --radius: 14px;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: "Manrope", system-ui, sans-serif;
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  min-height: 100vh;
+  padding-bottom: 84px; /* spazio per tab bar */
+}
+
+.app-header {
+  padding: 20px 18px 14px;
+  background: linear-gradient(180deg, var(--rosso) 0%, var(--rosso-scuro) 100%);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  color: #ffffff;
+}
+
+.app-header .eyebrow {
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #ffe4b8;
+  font-weight: 700;
+  margin-bottom: 2px;
+}
+
+.app-header h1 {
+  font-family: "Anton", sans-serif;
+  font-weight: 400;
+  font-size: 24px;
+  letter-spacing: 0.01em;
+  text-transform: uppercase;
+  margin: 0;
+  line-height: 1.1;
+  color: #ffffff;
+}
+
+.header-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 10px;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.status-dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #ffe27a;
+  margin-right: 5px;
+  box-shadow: 0 0 0 0 rgba(255, 226, 122, 0.6);
+  animation: pulse 2.4s infinite;
+}
+.status-dot.stale { background: #ffffff; animation: none; opacity: 0.6; }
+
+@keyframes pulse {
+  0% { box-shadow: 0 0 0 0 rgba(255, 226, 122, 0.55); }
+  70% { box-shadow: 0 0 0 6px rgba(255, 226, 122, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(255, 226, 122, 0); }
+}
+
+main { padding: 16px; max-width: 640px; margin: 0 auto; }
+
+/* KPI hero */
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.kpi-card {
+  background: var(--navy);
+  border: 1px solid var(--navy-line);
+  border-radius: var(--radius);
+  padding: 12px 8px;
+  text-align: center;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+}
+.kpi-card .label {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: rgba(255, 255, 255, 0.65);
+  margin-bottom: 4px;
+}
+.kpi-card .value {
+  font-family: "Anton", sans-serif;
+  font-size: 19px;
+  color: #f7ff2e;
+}
+.kpi-card.accent .value { color: #f7ff2e; }
+.kpi-card .kpi-diff {
+  margin-top: 5px;
+  font-size: 10.5px;
+  font-weight: 700;
+  font-family: "Manrope", sans-serif;
+}
+.kpi-card .kpi-diff span.up { color: #ffffff; }
+.kpi-card .kpi-diff span.down { color: #ffffff; }
+.kpi-card .kpi-diff span.flat { color: rgba(255, 255, 255, 0.7); }
+
+.kpi-note {
+  text-align: center;
+  font-size: 10.5px;
+  color: var(--ink-soft);
+  margin: 0 0 18px;
+}
+
+.today-banner {
+  background: var(--rosso-tint);
+  border: 1px solid rgba(194, 3, 14, 0.18);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  margin-bottom: 18px;
+}
+.today-banner .day-name {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--rosso);
+  font-weight: 800;
+}
+.today-banner .day-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-top: 6px;
+}
+.today-banner .big {
+  font-family: "Anton", sans-serif;
+  font-size: 26px;
+  color: var(--ink);
+}
+.today-banner .sub {
+  font-size: 12px;
+  color: var(--ink-soft);
+}
+
+section.panel { display: none; }
+section.panel.active { display: block; }
+
+.section-title {
+  font-family: "Manrope", sans-serif;
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  margin: 4px 0 10px;
+  color: var(--ink);
+}
+
+/* Tabella comparativa giorno per giorno 2026 / 2025 */
+.cmp-table { display: flex; flex-direction: column; }
+.cmp-head {
+  display: grid;
+  grid-template-columns: 74px 1fr 0.6fr 60px;
+  gap: 6px;
+  padding: 0 10px 6px;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--ink-soft);
+}
+.cmp-head .c-num { text-align: right; }
+.cmp-body { display: flex; flex-direction: column; gap: 6px; }
+
+.cmp-row {
+  display: grid;
+  grid-template-columns: 74px 1fr 0.6fr 60px;
+  gap: 6px;
+  align-items: center;
+  padding: 9px 10px;
+  background: var(--card);
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+}
+.cmp-row.is-today {
+  border-color: var(--rosso);
+  background: var(--rosso-tint);
+}
+.cmp-row .c-day {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--ink);
+  text-transform: capitalize;
+  line-height: 1.2;
+}
+.cmp-row .turno-tag {
+  display: inline-block;
+  margin-top: 3px;
+  padding: 1px 6px;
+  border-radius: 6px;
+  background: #fdf0d5;
+  color: #a3720c;
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.cmp-row .c-num { text-align: right; line-height: 1.25; }
+.cmp-row .c-num .v26 {
+  display: block;
+  font-size: 12.5px;
+  font-weight: 800;
+  color: var(--ink);
+}
+.cmp-row .c-num .v25 {
+  display: block;
+  font-size: 11px;
+  font-style: italic;
+  font-weight: 400;
+  color: var(--ink-soft);
+}
+.cmp-row .c-diff {
+  text-align: right;
+  font-size: 11.5px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+.cmp-row .c-diff.up { color: var(--up); }
+.cmp-row .c-diff.down { color: var(--down); }
+.cmp-row .c-diff.flat { color: var(--ink-soft); }
+
+/* Classifiche piatti/bibite */
+.rank-toggle {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+.rank-toggle button {
+  flex: 1;
+  padding: 9px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: var(--card);
+  color: var(--ink);
+  font-family: "Manrope", sans-serif;
+  font-weight: 700;
+  font-size: 12.5px;
+}
+.rank-toggle button.active {
+  background: var(--navy);
+  border-color: var(--navy-line);
+  color: #ffffff;
+}
+
+.rank-list { display: flex; flex-direction: column; gap: 6px; }
+.rank-item {
+  display: grid;
+  grid-template-columns: 22px 1fr auto;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  background: var(--card);
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+}
+.rank-item .pos {
+  font-family: "Anton", sans-serif;
+  color: var(--rosso);
+  font-size: 13px;
+}
+.rank-item .name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+  line-height: 1.25;
+}
+.rank-item .val {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink);
+  white-space: nowrap;
+}
+
+/* Tab bar */
+nav.tabbar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  background: linear-gradient(0deg, var(--rosso-scuro) 0%, var(--rosso) 100%);
+  padding: 6px 8px calc(6px + env(safe-area-inset-bottom));
+  z-index: 20;
+}
+nav.tabbar button {
+  flex: 1;
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.65);
+  font-family: "Manrope", sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 8px 4px;
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+}
+nav.tabbar button .icon { font-size: 18px; }
+nav.tabbar button.active { color: #ffffff; background: rgba(255, 255, 255, 0.18); }
+
+.empty-state {
+  text-align: center;
+  padding: 30px 12px;
+  color: var(--ink-soft);
+  font-size: 13px;
+}
+
+.error-banner {
+  background: #fdecec;
+  border: 1px solid var(--down);
+  color: var(--down);
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 12.5px;
+  margin-bottom: 14px;
+  display: none;
+}
+.error-banner.show { display: block; }

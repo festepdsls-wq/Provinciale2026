@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Festunità Provinciale 2026 — Cruscotto</title>
+<meta name="theme-color" content="#c2030e" />
+<link rel="manifest" href="manifest.json" />
+<link rel="apple-touch-icon" href="icon-192.png" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+<header class="app-header">
+  <div class="eyebrow">Parco Cevenini · 27 agosto – 20 settembre</div>
+  <h1>Festunità Provinciale 2026</h1>
+  <div class="header-meta">
+    <span><span id="statusDot" class="status-dot"></span><span id="statusText">aggiornamento...</span></span>
+    <span id="lastUpdate">—</span>
+  </div>
+</header>
+
+<main>
+  <div id="errorBanner" class="error-banner"></div>
+
+  <!-- ================= ANDAMENTO ================= -->
+  <section id="panel-andamento" class="panel active">
+    <div id="todayBanner" class="today-banner" style="display:none">
+      <div class="day-name" id="todayLabel">Oggi</div>
+      <div class="day-row">
+        <div>
+          <div class="big" id="todayIncasso">€ 0</div>
+          <div class="sub" id="todayCoperti">0 coperti</div>
+        </div>
+        <div class="sub" id="todayScontrino">€ 0 / pasto</div>
+      </div>
+    </div>
+
+    <div class="kpi-grid">
+      <div class="kpi-card accent">
+        <div class="label">Incasso tot.</div>
+        <div class="value" id="kpiIncasso">€ 0</div>
+        <div class="kpi-diff" id="kpiIncassoDiff"></div>
+      </div>
+      <div class="kpi-card">
+        <div class="label">Coperti tot.</div>
+        <div class="value" id="kpiCoperti">0</div>
+        <div class="kpi-diff" id="kpiCopertiDiff"></div>
+      </div>
+      <div class="kpi-card">
+        <div class="label">€/pasto</div>
+        <div class="value" id="kpiScontrino">€ 0</div>
+        <div class="kpi-diff" id="kpiScontrinoDiff"></div>
+      </div>
+    </div>
+    <div class="kpi-note" id="kpiNote"></div>
+
+    <div class="section-title">Giorno per giorno — confronto 2026 / 2025</div>
+    <div class="cmp-table" id="cmpTable">
+      <div class="cmp-head">
+        <div class="c-day">Giorno</div>
+        <div class="c-num">Incasso</div>
+        <div class="c-num">Coperti</div>
+        <div class="c-num">Diff.</div>
+      </div>
+      <div id="dayList" class="cmp-body"></div>
+    </div>
+  </section>
+
+  <!-- ================= PIATTI ================= -->
+  <section id="panel-piatti" class="panel">
+    <div class="rank-toggle">
+      <button data-mode="nr" class="active">Per pezzi venduti</button>
+      <button data-mode="euro">Per incasso</button>
+    </div>
+    <div class="section-title">Classifica piatti</div>
+    <div id="piattiList" class="rank-list"></div>
+  </section>
+
+  <!-- ================= BIBITE ================= -->
+  <section id="panel-bibite" class="panel">
+    <div class="rank-toggle">
+      <button data-mode="nr" class="active">Per pezzi venduti</button>
+      <button data-mode="euro">Per incasso</button>
+    </div>
+    <div class="section-title">Classifica bibite</div>
+    <div id="bibiteList" class="rank-list"></div>
+  </section>
+</main>
+
+<nav class="tabbar">
+  <button data-panel="andamento" class="active">
+    <span class="icon">📈</span><span>Andamento</span>
+  </button>
+  <button data-panel="piatti">
+    <span class="icon">🍽️</span><span>Piatti</span>
+  </button>
+  <button data-panel="bibite">
+    <span class="icon">🍹</span><span>Bibite</span>
+  </button>
+</nav>
+
+<script src="app.js"></script>
+</body>
+</html>
