@@ -5,11 +5,11 @@
 const SPESE_CONFIG = {
   SHEET_ID: "1bhjn4ZsTqYm88yZgKcRqOt7vRWF0hWOejCH4LPIOUw4",
   GID: "166174883", // tab FATTURE / RIMBORSI
-  PIN: "2708",
+  PIN: "2709",
   RANGES: {
-    totaleSpese: "O4:Q6",
-    giaRimborsati: "O9:Q11",
-    ancoraDaRimborsare: "O14:Q16",
+    totaleSpese: "O3:Q6",
+    giaRimborsati: "O8:Q11",
+    ancoraDaRimborsare: "O13:Q16",
     categoriaLabel: "W3:W14",
     categoriaValore: "X3:X14",
     fornitoreLabel: "T8:T30",
