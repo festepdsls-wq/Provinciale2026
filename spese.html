@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Costi Festa — Riservato</title>
+<meta name="theme-color" content="#c2030e" />
+<meta name="robots" content="noindex, nofollow" />
+<link rel="stylesheet" href="style.css" />
+<style>
+  .pin-gate {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    text-align: center;
+  }
+  .pin-gate .lock-icon { font-size: 34px; margin-bottom: 10px; }
+  .pin-gate h1 {
+    font-family: "Anton", sans-serif;
+    font-size: 20px;
+    text-transform: uppercase;
+    color: var(--ink);
+    margin: 0 0 6px;
+  }
+  .pin-gate p { color: var(--ink-soft); font-size: 13px; margin: 0 0 20px; }
+  .pin-gate input {
+    font-family: "Anton", sans-serif;
+    font-size: 22px;
+    letter-spacing: 0.3em;
+    text-align: center;
+    width: 160px;
+    padding: 12px;
+    border-radius: 10px;
+    border: 1px solid var(--line);
+    background: var(--card);
+    color: var(--ink);
+    margin-bottom: 14px;
+  }
+  .pin-gate button {
+    background: var(--rosso);
+    color: #fff;
+    border: none;
+    font-family: "Manrope", sans-serif;
+    font-weight: 700;
+    font-size: 14px;
+    padding: 12px 28px;
+    border-radius: 10px;
+  }
+  .pin-gate .pin-error { color: var(--down); font-size: 12.5px; margin-top: 10px; min-height: 16px; }
+</style>
+</head>
+<body>
+
+<!-- Schermo PIN -->
+<div id="pinGate" class="pin-gate">
+  <div class="lock-icon">🔒</div>
+  <h1>Costi Festa</h1>
+  <p>Sezione riservata — inserisci il PIN per accedere</p>
+  <input type="password" id="pinInput" inputmode="numeric" maxlength="6" placeholder="••••" autofocus />
+  <br />
+  <button id="pinSubmit">Sblocca</button>
+  <div id="pinError" class="pin-error"></div>
+</div>
+
+<!-- Contenuto (nascosto finché non si inserisce il PIN corretto) -->
+<div id="speseContent" style="display:none">
+  <header class="app-header">
+    <div class="eyebrow">Parco Cevenini · Riservato</div>
+    <h1>Costi Festa</h1>
+    <div class="header-meta">
+      <span><span id="statusDot" class="status-dot"></span><span id="statusText">aggiornamento...</span></span>
+    </div>
+  </header>
+
+  <main>
+    <div id="errorBanner" class="error-banner"></div>
+
+    <div class="kpi-grid">
+      <div class="kpi-card accent">
+        <div class="label">Totale spese</div>
+        <div class="value" id="kpiTotale">€ 0</div>
+      </div>
+      <div class="kpi-card">
+        <div class="label">Già rimborsato</div>
+        <div class="value" id="kpiRimborsato">€ 0</div>
+      </div>
+      <div class="kpi-card">
+        <div class="label">Da rimborsare</div>
+        <div class="value" id="kpiDaRimborsare">€ 0</div>
+      </div>
+    </div>
+
+    <div class="section-title">Spese per categoria</div>
+    <div id="categorieList" class="rank-list"></div>
+
+    <div class="section-title" style="margin-top:20px">Spese per fornitore</div>
+    <div id="fornitoriList" class="rank-list"></div>
+  </main>
+</div>
+
+<script src="spese.js"></script>
+</body>
+</html>
