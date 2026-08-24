@@ -457,6 +457,8 @@ function renderComparisonTable() {
         DOUBLE_TURNO_DATES.includes(r.dateKey) || r.turni26 > 1
           ? '<span class="turno-tag">2 turni</span>'
           : "";
+      const scontrino26 = r.cop26 > 0 ? r.inc26 / r.cop26 : 0;
+      const scontrino25 = r.cop25 > 0 ? r.inc25 / r.cop25 : 0;
       return `
         <div class="cmp-row ${isToday ? "is-today" : ""}">
           <div class="c-day">${r.displayLabel}${turnoTag}</div>
@@ -467,6 +469,10 @@ function renderComparisonTable() {
           <div class="c-num">
             <span class="v26">${fmtInt(r.cop26)}</span>
             <span class="v25">${fmtInt(r.cop25)}</span>
+          </div>
+          <div class="c-num">
+            <span class="v26">${scontrino26 > 0 ? fmtEuroDec(scontrino26) : "—"}</span>
+            <span class="v25">${scontrino25 > 0 ? fmtEuroDec(scontrino25) : "—"}</span>
           </div>
           <div class="c-diff ${cls}">${arrow} ${fmtEuro(Math.abs(r.diff))}</div>
         </div>`;
