@@ -22,6 +22,13 @@ const CONFIG = {
 
   FESTA_NOME: "Festa Provinciale dell'Unità",
   FESTA_ANNO: "2026",
+
+  // Scheda "Scontrini": dettaglio giornaliero piatti/bibite. A differenza dei range
+  // sopra, qui NON si usa un range fisso di righe/colonne: la lettura si adatta da
+  // sola cercando le intestazioni (vedi parseScontrini). SCONTRINI_RANGE è solo un
+  // "riquadro" abbastanza grande da contenere tutta la tabella con margine.
+  SCONTRINI_SHEET: "Scontrini",
+  SCONTRINI_RANGE: "A1:FZ60",
 };
 
 function gvizUrl(range) {
@@ -31,6 +38,18 @@ function gvizUrl(range) {
     gid: CONFIG.GID,
     range: range,
     _cb: Date.now().toString(), // anti-cache: forza Google a non servire una risposta vecchia
+  });
+  return `${base}?${params.toString()}`;
+}
+
+/** Come gvizUrl, ma per una scheda indicata per nome invece che per gid (usato per "Scontrini"). */
+function gvizUrlBySheetName(sheetName, range) {
+  const base = `https://docs.google.com/spreadsheets/d/${CONFIG.SHEET_ID}/gviz/tq`;
+  const params = new URLSearchParams({
+    tqx: "out:csv",
+    sheet: sheetName,
+    range: range,
+    _cb: Date.now().toString(),
   });
   return `${base}?${params.toString()}`;
 }
@@ -95,6 +114,23 @@ async function fetchRange(rangeKey) {
   const text = await res.text();
   if (text.includes("#REF") || text.trim() === "") {
     throw new Error(`Risposta vuota o non valida leggendo ${rangeKey}`);
+  }
+  return parseCsv(text);
+}
+
+/** Come fetchRange, ma legge la scheda "Scontrini" per nome invece che per gid+range fisso. */
+async function fetchScontriniRaw() {
+  const url = gvizUrlBySheetName(CONFIG.SCONTRINI_SHEET, CONFIG.SCONTRINI_RANGE);
+  let res;
+  try {
+    res = await fetch(url, { cache: "no-store" });
+  } catch (err) {
+    throw new Error(`Errore di rete leggendo Scontrini: ${err.message}`);
+  }
+  if (!res.ok) throw new Error(`Errore HTTP ${res.status} leggendo Scontrini`);
+  const text = await res.text();
+  if (text.includes("#REF") || text.trim() === "") {
+    throw new Error(`Risposta vuota o non valida leggendo Scontrini`);
   }
   return parseCsv(text);
 }
@@ -295,14 +331,114 @@ function mapRankedRows(rows, valueParser) {
     .sort((a, b) => b.valore - a.valore);
 }
 
+/**
+ * Analizza la scheda "Scontrini": una riga per piatto/bibita, e per ogni giornata
+ * un blocco di 6 colonne (NR Cassa1, € Cassa1, NR Cassa2, € Cassa2, TOTALE NR., TOTALE €).
+ * Non usa numeri di riga/colonna fissi: cerca da sola le intestazioni, così regge
+ * piccole modifiche al foglio (nuove date, righe spostate). Se la struttura non
+ * viene riconosciuta lancia un errore, che il chiamante gestisce senza rompere il
+ * resto dell'app (il dettaglio giornaliero sparisce, i totali stagione restano).
+ */
+function parseScontrini(rows) {
+  const headerIdx = rows.findIndex((r) => (r[3] || "").trim() === "TOT € AD OGGI");
+  if (headerIdx === -1 || !rows[headerIdx + 1]) {
+    throw new Error('Intestazione "TOT € AD OGGI" non trovata nella scheda Scontrini.');
+  }
+  const head1 = rows[headerIdx];
+  const head2 = rows[headerIdx + 1];
+
+  // Ogni cella di head1 (dalla colonna G, indice 6, in poi) che contiene un gg/mm
+  // segna l'inizio del blocco di quella giornata.
+  const blockStarts = [];
+  for (let c = 6; c < head1.length; c++) {
+    const cell = (head1[c] || "").trim();
+    if (/\d{1,2}\s*\/\s*\d{1,2}/.test(cell)) blockStarts.push({ col: c, label: cell });
+  }
+
+  const days = blockStarts.map((b, i) => {
+    const nextCol = i + 1 < blockStarts.length ? blockStarts[i + 1].col : head1.length;
+    let totNrCol = -1;
+    let totEuroCol = -1;
+    for (let c = b.col; c < nextCol; c++) {
+      const cell = (head2[c] || "").trim().toUpperCase();
+      if (cell === "TOTALE NR.") totNrCol = c;
+      if (cell.startsWith("TOTALE €") || cell.startsWith("TOTALE EURO")) totEuroCol = c;
+    }
+    // Fallback posizionale (offset noti nel blocco da 6 colonne) se le etichette non si trovano.
+    if (totNrCol === -1) totNrCol = b.col + 4;
+    if (totEuroCol === -1) totEuroCol = b.col + 5;
+    const parsed = parseDayLabel(b.label);
+    return {
+      key: b.label,
+      dateKey: parsed.dateKey,
+      turno: parsed.turno,
+      displayLabel: parsed.turno === "pranzo" ? `${parsed.displayLabel} · pranzo` : parsed.displayLabel,
+      totNrCol,
+      totEuroCol,
+    };
+  });
+
+  const piattiByDay = new Map();
+  const bibiteByDay = new Map();
+  days.forEach((d) => {
+    piattiByDay.set(d.key, []);
+    bibiteByDay.set(d.key, []);
+  });
+
+  // Le righe dati iniziano dopo l'intestazione e la riga "NR. COPERTI"; le saltiamo
+  // cercando la prima riga con una vera descrizione piatto.
+  let i = headerIdx + 2;
+  while (i < rows.length) {
+    const b = ((rows[i] && rows[i][1]) || "").trim().toUpperCase();
+    if (b === "" || b === "NR. COPERTI") { i++; continue; }
+    break;
+  }
+
+  const maxRow = Math.min(rows.length, headerIdx + 90);
+  for (; i < maxRow; i++) {
+    const row = rows[i] || [];
+    const desc = (row[1] || "").trim();
+    const descUpper = desc.toUpperCase();
+    if (descUpper === "AGGIUSTAMENTI DI CASSA" || descUpper === "TOTALE RISTORANTE") break;
+    if (!desc) continue; // righe vuote di separazione tra categorie
+    const portata = (row[2] || "").trim().toUpperCase();
+    if (portata === "COPERTO/ASPORTI") continue; // coperto e asporti non sono piatti
+    const target = portata === "BIBITE" ? bibiteByDay : piattiByDay;
+    days.forEach((d) => {
+      const nr = parseItalianInt(row[d.totNrCol]);
+      const euro = parseItalianCurrency(row[d.totEuroCol]);
+      if (nr > 0 || euro > 0) target.get(d.key).push({ nome: desc, nr, euro });
+    });
+  }
+
+  // Mostra solo le giornate per cui risulta già venduto qualcosa.
+  const activeDays = days.filter(
+    (d) => (piattiByDay.get(d.key) || []).length > 0 || (bibiteByDay.get(d.key) || []).length > 0
+  );
+
+  return { days: activeDays, piattiByDay, bibiteByDay };
+}
+
+/** Non lancia mai: se il dettaglio giornaliero non è leggibile, l'app resta comunque utilizzabile con i soli totali stagione. */
+async function loadScontriniDetail() {
+  try {
+    const raw = await fetchScontriniRaw();
+    return parseScontrini(raw);
+  } catch (err) {
+    console.error("Dettaglio giornaliero piatti/bibite non disponibile:", err);
+    return null;
+  }
+}
+
 async function loadAllData() {
-  const [c26, c25, pNr, pEuro, bNr, bEuro] = await Promise.all([
+  const [c26, c25, pNr, pEuro, bNr, bEuro, scontrini] = await Promise.all([
     fetchRange("coperti2026"),
     fetchRange("coperti2025"),
     fetchRange("piattiNr"),
     fetchRange("piattiEuro"),
     fetchRange("bibiteNr"),
     fetchRange("bibiteEuro"),
+    loadScontriniDetail(),
   ]);
 
   return {
@@ -312,6 +448,7 @@ async function loadAllData() {
     piattiEuro: mapRankedRows(pEuro, parseItalianCurrency),
     bibiteNr: mapRankedRows(bNr, parseItalianInt),
     bibiteEuro: mapRankedRows(bEuro, parseItalianCurrency),
+    scontrini,
     fetchedAt: new Date(),
   };
 }
@@ -360,6 +497,9 @@ function fmtInt(n) {
 
 let LAST_DATA = null;
 let RANK_MODE = { piatti: "nr", bibite: "nr" };
+// "ALL" = tutta la stagione (comportamento di sempre); altrimenti la chiave di un
+// giorno specifico (vedi parseScontrini) per vedere solo quella giornata.
+let DAY_FILTER = { piatti: "ALL", bibite: "ALL" };
 
 // Date con doppio turno (pranzo+cena) note in anticipo — il tag "2 turni" compare
 // sempre per queste, indipendentemente da come arrivano i dati dal foglio.
@@ -472,9 +612,31 @@ function renderTotalDiff() {
   noteEl.textContent = `vs 2025, sugli stessi ${c.giorni} giorni trascorsi`;
 }
 
-function renderRankList(containerId, mode, nrData, euroData) {
+/**
+ * Restituisce l'elenco da mostrare per "piatti" o "bibite": se il filtro giorno è
+ * "ALL" (o il dettaglio Scontrini non è disponibile) sono i totali stagione di
+ * sempre; altrimenti sono i dati di quel singolo giorno, ricavati da Scontrini.
+ */
+function getRankSource(category) {
+  const mode = RANK_MODE[category];
+  const dayKey = DAY_FILTER[category];
+  if (dayKey === "ALL" || !LAST_DATA.scontrini) {
+    if (category === "piatti") return mode === "nr" ? LAST_DATA.piattiNr : LAST_DATA.piattiEuro;
+    return mode === "nr" ? LAST_DATA.bibiteNr : LAST_DATA.bibiteEuro;
+  }
+  const byDay = category === "piatti" ? LAST_DATA.scontrini.piattiByDay : LAST_DATA.scontrini.bibiteByDay;
+  const rows = byDay.get(dayKey) || [];
+  return rows
+    .map((r) => ({ nome: r.nome, valore: mode === "nr" ? r.nr : r.euro }))
+    .filter((r) => r.valore > 0)
+    .sort((a, b) => b.valore - a.valore);
+}
+
+function renderRankList(category) {
+  const containerId = category === "piatti" ? "piattiList" : "bibiteList";
   const container = document.getElementById(containerId);
-  const data = mode === "nr" ? nrData : euroData;
+  const mode = RANK_MODE[category];
+  const data = getRankSource(category);
   if (!data || data.length === 0) {
     container.innerHTML = `<div class="empty-state">Nessun dato disponibile.</div>`;
     return;
@@ -493,13 +655,47 @@ function renderRankList(containerId, mode, nrData, euroData) {
     .join("");
 }
 
+/** Fila di "pillole" con le giornate, sopra le classifiche Piatti/Bibite. "Tutta la
+ * stagione" è sempre la prima ed è quella attiva di default. */
+function renderDayChips(category) {
+  const wrapId = category === "piatti" ? "piattiDayChips" : "bibiteDayChips";
+  const wrap = document.getElementById(wrapId);
+  if (!wrap) return;
+  const days = LAST_DATA.scontrini ? LAST_DATA.scontrini.days : [];
+  if (days.length === 0) {
+    wrap.style.display = "none";
+    wrap.innerHTML = "";
+    return;
+  }
+  wrap.style.display = "flex";
+  const current = DAY_FILTER[category];
+  const chips = [{ key: "ALL", label: "Tutta la stagione" }].concat(
+    days.map((d) => ({ key: d.key, label: d.displayLabel }))
+  );
+  wrap.innerHTML = chips
+    .map(
+      (c) =>
+        `<button class="day-chip${c.key === current ? " active" : ""}" data-day="${encodeURIComponent(c.key)}">${c.label}</button>`
+    )
+    .join("");
+  wrap.querySelectorAll(".day-chip").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      DAY_FILTER[category] = decodeURIComponent(btn.dataset.day);
+      renderDayChips(category);
+      renderRankList(category);
+    });
+  });
+}
+
 function renderAll() {
   if (!LAST_DATA) return;
   renderKpis(LAST_DATA.coperti2026);
   renderTotalDiff();
   renderComparisonTable();
-  renderRankList("piattiList", RANK_MODE.piatti, LAST_DATA.piattiNr, LAST_DATA.piattiEuro);
-  renderRankList("bibiteList", RANK_MODE.bibite, LAST_DATA.bibiteNr, LAST_DATA.bibiteEuro);
+  renderDayChips("piatti");
+  renderDayChips("bibite");
+  renderRankList("piatti");
+  renderRankList("bibite");
 
   document.getElementById("lastUpdate").textContent =
     LAST_DATA.fetchedAt.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" });
@@ -550,7 +746,7 @@ document.querySelectorAll("#panel-piatti .rank-toggle button").forEach((btn) => 
     document.querySelectorAll("#panel-piatti .rank-toggle button").forEach((b) => b.classList.remove("active"));
     btn.classList.add("active");
     RANK_MODE.piatti = btn.dataset.mode;
-    renderRankList("piattiList", RANK_MODE.piatti, LAST_DATA.piattiNr, LAST_DATA.piattiEuro);
+    renderRankList("piatti");
   });
 });
 
@@ -559,7 +755,7 @@ document.querySelectorAll("#panel-bibite .rank-toggle button").forEach((btn) => 
     document.querySelectorAll("#panel-bibite .rank-toggle button").forEach((b) => b.classList.remove("active"));
     btn.classList.add("active");
     RANK_MODE.bibite = btn.dataset.mode;
-    renderRankList("bibiteList", RANK_MODE.bibite, LAST_DATA.bibiteNr, LAST_DATA.bibiteEuro);
+    renderRankList("bibite");
   });
 });
 
