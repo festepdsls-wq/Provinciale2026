@@ -316,20 +316,6 @@ async function loadAllData() {
   };
 }
 
-/** Chiave "gg/mm" di oggi, stesso formato usato da parseDayLabel */
-function todayKey() {
-  const now = new Date();
-  return `${String(now.getDate()).padStart(2, "0")}/${String(now.getMonth() + 1).padStart(2, "0")}`;
-}
-
-/** Trova tutte le righe (indice + dati) che corrispondono alla data odierna — può essere più di una (pranzo+cena) */
-function findTodayMatches(dailyRows) {
-  const key = todayKey();
-  return dailyRows
-    .map((r, i) => ({ ...r, idx: i }))
-    .filter((r) => r.dateKey === key);
-}
-
 /**
  * Rimuove duplicati esatti (stessa data, stesso incasso, stessi coperti) prima di sommare —
  * protezione nel caso la fonte dati restituisca la stessa riga più di una volta.
@@ -399,33 +385,6 @@ function switchPanel(name) {
   });
 }
 
-function renderTodayBanner(daily) {
-  const banner = document.getElementById("todayBanner");
-  const matches = findTodayMatches(daily);
-  if (matches.length === 0) {
-    banner.style.display = "none";
-    return;
-  }
-  const totIncasso = matches.reduce((s, r) => s + r.incasso, 0);
-  const totCoperti = matches.reduce((s, r) => s + r.coperti, 0);
-
-  banner.style.display = "block";
-  document.getElementById("todayLabel").textContent = matches[0].displayLabel;
-  document.getElementById("todayIncasso").textContent = fmtEuro(totIncasso);
-  document.getElementById("todayCoperti").textContent = `${fmtInt(totCoperti)} coperti`;
-
-  const scontrinoEl = document.getElementById("todayScontrino");
-  if (matches.length > 1) {
-    // Più turni lo stesso giorno (es. pranzo + cena): mostra il dettaglio invece dello scontrino unico
-    scontrinoEl.textContent = matches
-      .map((r) => `${r.turno === "pranzo" ? "Pranzo" : "Cena"}: ${fmtEuro(r.incasso)}`)
-      .join(" · ");
-  } else {
-    scontrinoEl.textContent =
-      totCoperti > 0 ? `${fmtEuroDec(totIncasso / totCoperti)} / pasto` : "—";
-  }
-}
-
 function renderKpis(daily) {
   const t = computeTotals(daily);
   document.getElementById("kpiIncasso").textContent = fmtEuro(t.incasso);
@@ -442,16 +401,23 @@ function diffBits(diff) {
 function renderComparisonTable() {
   const cmp = buildComparisonRows(LAST_DATA.coperti2026, LAST_DATA.coperti2025);
   const list = document.getElementById("dayList");
-  const tKey = todayKey();
 
   if (cmp.length === 0) {
     list.innerHTML = `<div class="empty-state">Nessun dato ancora registrato.</div>`;
     return;
   }
 
+  // Evidenzia l'ultimo giorno per cui risultano dati 2026 già inseriti (non "oggi":
+  // la cassa chiude alle 23:30, quindi il giorno corrente resta a zero fino ad allora
+  // ed evidenziarlo non è utile).
+  let lastUpdatedIdx = -1;
+  cmp.forEach((r, i) => {
+    if (r.hasData26) lastUpdatedIdx = i;
+  });
+
   list.innerHTML = cmp
-    .map((r) => {
-      const isToday = r.dateKey === tKey;
+    .map((r, i) => {
+      const isLastUpdate = i === lastUpdatedIdx;
       const { arrow, cls } = diffBits(r.diff);
       const turnoTag =
         DOUBLE_TURNO_DATES.includes(r.dateKey) || r.turni26 > 1
@@ -460,7 +426,7 @@ function renderComparisonTable() {
       const scontrino26 = r.cop26 > 0 ? r.inc26 / r.cop26 : 0;
       const scontrino25 = r.cop25 > 0 ? r.inc25 / r.cop25 : 0;
       return `
-        <div class="cmp-row ${isToday ? "is-today" : ""}">
+        <div class="cmp-row ${isLastUpdate ? "is-last-update" : ""}">
           <div class="c-day">${r.displayLabel}${turnoTag}</div>
           <div class="c-num">
             <span class="v26">${fmtEuro(r.inc26)}</span>
@@ -529,7 +495,6 @@ function renderRankList(containerId, mode, nrData, euroData) {
 
 function renderAll() {
   if (!LAST_DATA) return;
-  renderTodayBanner(LAST_DATA.coperti2026);
   renderKpis(LAST_DATA.coperti2026);
   renderTotalDiff();
   renderComparisonTable();
