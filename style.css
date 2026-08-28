@@ -222,6 +222,36 @@ section.panel.active { display: block; }
 .cmp-row .c-diff.down { color: var(--down); }
 .cmp-row .c-diff.flat { color: var(--ink-soft); }
 
+/* Selettore giornata (dettaglio piatti/bibite del singolo giorno) */
+.day-chips {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+  margin-bottom: 12px;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.day-chips::-webkit-scrollbar { display: none; }
+.day-chip {
+  flex: 0 0 auto;
+  white-space: nowrap;
+  padding: 7px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--card);
+  color: var(--ink-soft);
+  font-family: "Manrope", sans-serif;
+  font-weight: 700;
+  font-size: 11.5px;
+  text-transform: capitalize;
+}
+.day-chip.active {
+  background: var(--rosso);
+  border-color: var(--rosso);
+  color: #ffffff;
+}
+
 /* Classifiche piatti/bibite */
 .rank-toggle {
   display: flex;
