@@ -340,20 +340,32 @@ function mapRankedRows(rows, valueParser) {
  * resto dell'app (il dettaglio giornaliero sparisce, i totali stagione restano).
  */
 function parseScontrini(rows) {
-  const headerIdx = rows.findIndex((r) => (r[3] || "").trim() === "TOT € AD OGGI");
+  // NOTA: quando si legge un intervallo molto largo, l'export CSV di Google Sheets
+  // svuota le intestazioni di testo delle colonne che contengono per lo più numeri
+  // più in basso (le "inferisce" come colonna numerica). Per questo NON cerchiamo
+  // l'intestazione "TOT € AD OGGI" (colonna che finisce svuotata): individuiamo la
+  // riga giusta cercando invece la riga con più celle "gg/mm" dalla colonna G in poi
+  // — le etichette data restano sempre testo e non vengono mai svuotate.
+  let headerIdx = -1;
+  let blockStarts = [];
+  for (let r = 0; r < rows.length; r++) {
+    const row = rows[r];
+    const candidates = [];
+    for (let c = 6; c < row.length; c++) {
+      const cell = (row[c] || "").trim();
+      if (/\d{1,2}\s*\/\s*\d{1,2}/.test(cell)) candidates.push({ col: c, label: cell });
+    }
+    if (candidates.length >= 3) {
+      headerIdx = r;
+      blockStarts = candidates;
+      break;
+    }
+  }
   if (headerIdx === -1 || !rows[headerIdx + 1]) {
-    throw new Error('Intestazione "TOT € AD OGGI" non trovata nella scheda Scontrini.');
+    throw new Error("Riga delle date non trovata nella scheda Scontrini.");
   }
   const head1 = rows[headerIdx];
   const head2 = rows[headerIdx + 1];
-
-  // Ogni cella di head1 (dalla colonna G, indice 6, in poi) che contiene un gg/mm
-  // segna l'inizio del blocco di quella giornata.
-  const blockStarts = [];
-  for (let c = 6; c < head1.length; c++) {
-    const cell = (head1[c] || "").trim();
-    if (/\d{1,2}\s*\/\s*\d{1,2}/.test(cell)) blockStarts.push({ col: c, label: cell });
-  }
 
   const days = blockStarts.map((b, i) => {
     const nextCol = i + 1 < blockStarts.length ? blockStarts[i + 1].col : head1.length;
