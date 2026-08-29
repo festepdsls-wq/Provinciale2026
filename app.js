@@ -681,7 +681,7 @@ function renderDayChips(category) {
   }
   wrap.style.display = "flex";
   const current = DAY_FILTER[category];
-  const chips = [{ key: "ALL", label: "Tutta la stagione" }].concat(
+  const chips = [{ key: "ALL", label: "Totale" }].concat(
     days.map((d) => ({ key: d.key, label: d.displayLabel }))
   );
   wrap.innerHTML = chips
