@@ -339,6 +339,27 @@ function mapRankedRows(rows, valueParser) {
  * viene riconosciuta lancia un errore, che il chiamante gestisce senza rompere il
  * resto dell'app (il dettaglio giornaliero sparisce, i totali stagione restano).
  */
+/** "dd/mm" + spostamento in giorni (anche negativo) -> nuova "dd/mm", calcolato sul calendario reale */
+function shiftDateKeyByDays(dateKey, deltaDays) {
+  const m = (dateKey || "").match(/^(\d{2})\/(\d{2})$/);
+  if (!m) return null;
+  const d = new Date(2026, parseInt(m[2], 10) - 1, parseInt(m[1], 10));
+  d.setDate(d.getDate() + deltaDays);
+  const dd = String(d.getDate()).padStart(2, "0");
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  return `${dd}/${mm}`;
+}
+
+/** Trova, tra i giorni con dati disponibili, quello di 7 giorni prima (stesso giorno della
+ * settimana). Preferisce lo stesso turno (pranzo/cena) se esiste, altrimenti va bene l'altro. */
+function findSameWeekdayLastWeek(currentDay, allDays) {
+  const targetKey = shiftDateKeyByDays(currentDay.dateKey, -7);
+  if (!targetKey) return null;
+  const sameTurno = allDays.find((d) => d.dateKey === targetKey && d.turno === currentDay.turno);
+  if (sameTurno) return sameTurno;
+  return allDays.find((d) => d.dateKey === targetKey) || null;
+}
+
 function parseScontrini(rows) {
   // NOTA: quando si legge un intervallo molto largo, l'export CSV di Google Sheets
   // svuota le intestazioni di testo delle colonne che contengono per lo più numeri
@@ -646,21 +667,58 @@ function getRankSource(category) {
 
 function renderRankList(category) {
   const containerId = category === "piatti" ? "piattiList" : "bibiteList";
+  const legendId = category === "piatti" ? "piattiTrendLegend" : "bibiteTrendLegend";
   const container = document.getElementById(containerId);
   const mode = RANK_MODE[category];
   const data = getRankSource(category);
+  const legendEl = document.getElementById(legendId);
+
+  const dayKey = DAY_FILTER[category];
+  const days = LAST_DATA.scontrini ? LAST_DATA.scontrini.days : [];
+  const currentDay = dayKey !== "ALL" ? days.find((d) => d.key === dayKey) : null;
+  const prevDay = currentDay ? findSameWeekdayLastWeek(currentDay, days) : null;
+
+  if (legendEl) {
+    legendEl.style.display = currentDay ? "block" : "none";
+    if (currentDay) {
+      legendEl.innerHTML = prevDay
+        ? `<span class="up">▲</span> più venduto/incassato rispetto a <b>${prevDay.displayLabel}</b> (stesso giorno, settimana scorsa) · <span class="down">▼</span> meno · <span class="flat">＝</span> invariato`
+        : `Nessun confronto disponibile: non c'è ancora un ${currentDay.displayLabel.split(" ")[0]} della settimana precedente con dati.`;
+    }
+  }
+
   if (!data || data.length === 0) {
     container.innerHTML = `<div class="empty-state">Nessun dato disponibile.</div>`;
     return;
   }
+
+  // Mappa nome piatto -> valore della settimana scorsa (stesso giorno), per il confronto
+  let prevValueByName = null;
+  if (prevDay) {
+    const byDay = category === "piatti" ? LAST_DATA.scontrini.piattiByDay : LAST_DATA.scontrini.bibiteByDay;
+    const prevRows = byDay.get(prevDay.key) || [];
+    prevValueByName = new Map(prevRows.map((r) => [r.nome, mode === "nr" ? r.nr : r.euro]));
+  }
+
   container.innerHTML = data
     .slice(0, 30)
     .map((r, i) => {
       const val = mode === "nr" ? `${fmtInt(r.valore)}×` : fmtEuro(r.valore);
+      let trendHtml = "";
+      if (prevValueByName) {
+        if (prevValueByName.has(r.nome)) {
+          const prevVal = prevValueByName.get(r.nome);
+          if (r.valore > prevVal) trendHtml = '<span class="trend-arrow up">▲</span>';
+          else if (r.valore < prevVal) trendHtml = '<span class="trend-arrow down">▼</span>';
+          else trendHtml = '<span class="trend-arrow flat">＝</span>';
+        } else {
+          trendHtml = '<span class="trend-arrow up">▲</span>'; // non venduto la settimana scorsa: è tutto "nuovo"
+        }
+      }
       return `
         <div class="rank-item">
           <div class="pos">${i + 1}</div>
-          <div class="name">${r.nome}</div>
+          <div class="name">${trendHtml}${r.nome}</div>
           <div class="val">${val}</div>
         </div>`;
     })
