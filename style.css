@@ -278,9 +278,9 @@ section.panel.active { display: block; }
 .rank-list { display: flex; flex-direction: column; gap: 6px; }
 .rank-item {
   display: grid;
-  grid-template-columns: 22px 1fr auto;
+  grid-template-columns: 20px 1fr 46px;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   padding: 10px 12px;
   background: var(--card);
   border-radius: 10px;
@@ -303,6 +303,7 @@ section.panel.active { display: block; }
   font-weight: 700;
   color: var(--ink);
   white-space: nowrap;
+  text-align: right;
 }
 
 /* Freccetta di tendenza (confronto con lo stesso giorno della settimana scorsa) */
