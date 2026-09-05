@@ -740,7 +740,10 @@ function renderDayChips(category) {
   wrap.style.display = "flex";
   const current = DAY_FILTER[category];
   const chips = [{ key: "ALL", label: "Totale" }].concat(
-    days.map((d) => ({ key: d.key, label: d.displayLabel }))
+    days
+      .slice() // copia: non tocca l'array originale usato altrove (es. confronto settimana scorsa)
+      .reverse()
+      .map((d) => ({ key: d.key, label: d.displayLabel }))
   );
   wrap.innerHTML = chips
     .map(
