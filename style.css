@@ -305,6 +305,30 @@ section.panel.active { display: block; }
   white-space: nowrap;
 }
 
+/* Freccetta di tendenza (confronto con lo stesso giorno della settimana scorsa) */
+.trend-arrow {
+  display: inline-block;
+  margin-right: 6px;
+  font-size: 12px;
+}
+.trend-arrow.up { color: var(--up); }
+.trend-arrow.down { color: var(--down); }
+.trend-arrow.flat { color: var(--ink-soft); }
+
+.trend-legend {
+  font-size: 11px;
+  color: var(--ink-soft);
+  background: rgba(0, 0, 0, 0.035);
+  border-radius: 10px;
+  padding: 8px 12px;
+  margin-bottom: 10px;
+  line-height: 1.5;
+}
+.trend-legend .up { color: var(--up); font-weight: 700; }
+.trend-legend .down { color: var(--down); font-weight: 700; }
+.trend-legend .flat { color: var(--ink-soft); font-weight: 700; }
+.trend-legend b { color: var(--ink); }
+
 /* Tab bar */
 nav.tabbar {
   position: fixed;
