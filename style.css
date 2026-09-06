@@ -129,6 +129,12 @@ main { padding: 16px; max-width: 640px; margin: 0 auto; }
 .kpi-card .kpi-diff span.up { color: #ffffff; }
 .kpi-card .kpi-diff span.down { color: #ffffff; }
 .kpi-card .kpi-diff span.flat { color: rgba(255, 255, 255, 0.7); }
+.kpi-card .kpi-diff-pct {
+  font-size: 9px;
+  font-style: italic;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.65);
+}
 
 .kpi-note {
   text-align: center;
