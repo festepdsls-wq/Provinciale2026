@@ -640,9 +640,9 @@ function renderTotalDiff() {
 
   const setDiff = (id, value, base, fmt) => {
     const { arrow, cls } = diffBits(value);
-    const pct = base > 0 ? ` (${value >= 0 ? "+" : "−"}${fmtPct(Math.abs(value) / base * 100)})` : "";
+    const pct = base > 0 ? `<br><span class="kpi-diff-pct">${value >= 0 ? "+" : "−"}${fmtPct(Math.abs(value) / base * 100)}</span>` : "";
     document.getElementById(id).innerHTML =
-      `<span class="${cls}">${arrow} ${value >= 0 ? "+" : "−"}${fmt(Math.abs(value))}${pct}</span>`;
+      `<span class="${cls}">${arrow} ${value >= 0 ? "+" : "−"}${fmt(Math.abs(value))}</span>${pct}`;
   };
 
   setDiff("kpiIncassoDiff", c.diffIncasso, c.inc25, fmtEuro);
