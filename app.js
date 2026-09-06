@@ -317,6 +317,9 @@ function computeCumulativeComparison(cmpRows) {
     diffIncasso: inc26 - inc25,
     diffCoperti: cop26 - cop25,
     diffScontrino: scontrino26 - scontrino25,
+    inc25,
+    cop25,
+    scontrino25,
   };
 }
 
@@ -524,6 +527,9 @@ function fmtEuroDec(n) {
 function fmtInt(n) {
   return n.toLocaleString("it-IT");
 }
+function fmtPct(n) {
+  return n.toLocaleString("it-IT", { maximumFractionDigits: 1 }) + "%";
+}
 // ============================================================
 // APP — rendering e interazioni
 // ============================================================
@@ -632,15 +638,16 @@ function renderTotalDiff() {
     return;
   }
 
-  const setDiff = (id, value, fmt) => {
+  const setDiff = (id, value, base, fmt) => {
     const { arrow, cls } = diffBits(value);
+    const pct = base > 0 ? ` (${value >= 0 ? "+" : "−"}${fmtPct(Math.abs(value) / base * 100)})` : "";
     document.getElementById(id).innerHTML =
-      `<span class="${cls}">${arrow} ${value >= 0 ? "+" : "−"}${fmt(Math.abs(value))}</span>`;
+      `<span class="${cls}">${arrow} ${value >= 0 ? "+" : "−"}${fmt(Math.abs(value))}${pct}</span>`;
   };
 
-  setDiff("kpiIncassoDiff", c.diffIncasso, fmtEuro);
-  setDiff("kpiCopertiDiff", c.diffCoperti, fmtInt);
-  setDiff("kpiScontrinoDiff", c.diffScontrino, fmtEuroDec);
+  setDiff("kpiIncassoDiff", c.diffIncasso, c.inc25, fmtEuro);
+  setDiff("kpiCopertiDiff", c.diffCoperti, c.cop25, fmtInt);
+  setDiff("kpiScontrinoDiff", c.diffScontrino, c.scontrino25, fmtEuroDec);
 
   noteEl.textContent = `vs 2025, sugli stessi ${c.giorni} giorni trascorsi`;
 }
