@@ -539,6 +539,61 @@ let RANK_MODE = { piatti: "nr", bibite: "nr" };
 // "ALL" = tutta la stagione (comportamento di sempre); altrimenti la chiave di un
 // giorno specifico (vedi parseScontrini) per vedere solo quella giornata.
 let DAY_FILTER = { piatti: "ALL", bibite: "ALL" };
+// null = modalità normale (Totale/giorno singolo); altrimenti { weekdayIdx: null|0-6 }
+// weekdayIdx null = "Media Totale" (media su tutti i giorni), 0-6 = media di quel giorno
+// della settimana (0=Domenica...6=Sabato, standard JS Date.getDay())
+let AVG_MODE = { piatti: null, bibite: null };
+
+const WEEKDAY_LABELS_UI = [
+  { idx: 1, label: "Lun" },
+  { idx: 2, label: "Mar" },
+  { idx: 3, label: "Mer" },
+  { idx: 4, label: "Gio" },
+  { idx: 5, label: "Ven" },
+  { idx: 6, label: "Sab" },
+  { idx: 0, label: "Dom" },
+];
+const WEEKDAY_LABELS_FULL = ["Domenica", "Lunedì", "Martedì", "Mercoledì", "Giovedì", "Venerdì", "Sabato"];
+
+/** "dd/mm" -> indice giorno settimana (0=Domenica...6=Sabato), calcolato sul calendario reale */
+function getWeekdayIndex(dateKey) {
+  const m = (dateKey || "").match(/^(\d{2})\/(\d{2})$/);
+  if (!m) return null;
+  return new Date(2026, parseInt(m[2], 10) - 1, parseInt(m[1], 10)).getDay();
+}
+
+/**
+ * Media per piatto/bibita su un sottoinsieme di giorni: weekdayIdx=null -> tutti i
+ * giorni con dati (media totale), altrimenti solo i giorni che cadono in quel
+ * giorno della settimana. La media è sul numero di giorni CON DATI, non sul totale
+ * dei giorni della festa (altrimenti i giorni ancora da venire abbasserebbero la media).
+ */
+function computeAverageRanking(category, weekdayIdx) {
+  if (!LAST_DATA.scontrini) return [];
+  const byDay = category === "piatti" ? LAST_DATA.scontrini.piattiByDay : LAST_DATA.scontrini.bibiteByDay;
+  const days = LAST_DATA.scontrini.days.filter(
+    (d) => weekdayIdx === null || getWeekdayIndex(d.dateKey) === weekdayIdx
+  );
+
+  const sums = new Map(); // nome -> { nr, euro }
+  let giorniConDati = 0;
+  for (const day of days) {
+    const rows = byDay.get(day.key) || [];
+    if (rows.length === 0) continue;
+    giorniConDati++;
+    for (const r of rows) {
+      const cur = sums.get(r.nome) || { nr: 0, euro: 0 };
+      cur.nr += r.nr;
+      cur.euro += r.euro;
+      sums.set(r.nome, cur);
+    }
+  }
+
+  const divisor = giorniConDati || 1;
+  const out = [];
+  sums.forEach((v, nome) => out.push({ nome, nr: v.nr / divisor, euro: v.euro / divisor }));
+  return { rows: out, giorniConDati };
+}
 
 // Date con doppio turno (pranzo+cena) note in anticipo — il tag "2 turni" compare
 // sempre per queste, indipendentemente da come arrivano i dati dal foglio.
@@ -659,6 +714,15 @@ function renderTotalDiff() {
  */
 function getRankSource(category) {
   const mode = RANK_MODE[category];
+
+  if (AVG_MODE[category] !== null) {
+    const { rows } = computeAverageRanking(category, AVG_MODE[category].weekdayIdx);
+    return rows
+      .map((r) => ({ nome: r.nome, valore: mode === "nr" ? r.nr : r.euro }))
+      .filter((r) => r.valore > 0)
+      .sort((a, b) => b.valore - a.valore);
+  }
+
   const dayKey = DAY_FILTER[category];
   if (dayKey === "ALL" || !LAST_DATA.scontrini) {
     if (category === "piatti") return mode === "nr" ? LAST_DATA.piattiNr : LAST_DATA.piattiEuro;
@@ -677,8 +741,48 @@ function renderRankList(category) {
   const legendId = category === "piatti" ? "piattiTrendLegend" : "bibiteTrendLegend";
   const container = document.getElementById(containerId);
   const mode = RANK_MODE[category];
-  const data = getRankSource(category);
   const legendEl = document.getElementById(legendId);
+
+  // --- Modalità media (Media Totale / per giorno della settimana) ---
+  if (AVG_MODE[category] !== null) {
+    const weekdayIdx = AVG_MODE[category].weekdayIdx;
+    const { rows, giorniConDati } = computeAverageRanking(category, weekdayIdx);
+    const data = rows
+      .map((r) => ({ nome: r.nome, valore: mode === "nr" ? r.nr : r.euro }))
+      .filter((r) => r.valore > 0)
+      .sort((a, b) => b.valore - a.valore);
+
+    if (legendEl) {
+      legendEl.style.display = "block";
+      const periodo = weekdayIdx === null ? "tutti i giorni della festa" : `tutti i ${WEEKDAY_LABELS_FULL[weekdayIdx].toLowerCase()}`;
+      legendEl.innerHTML =
+        giorniConDati > 0
+          ? `Media calcolata su <b>${giorniConDati}</b> giorni (${periodo} con dati registrati).`
+          : `Nessun dato ancora disponibile per ${periodo}.`;
+    }
+
+    if (data.length === 0) {
+      container.innerHTML = `<div class="empty-state">Nessun dato disponibile.</div>`;
+      return;
+    }
+
+    container.innerHTML = data
+      .slice(0, 30)
+      .map((r, i) => {
+        const val = mode === "nr" ? `${r.valore.toLocaleString("it-IT", { maximumFractionDigits: 1 })}×/g` : `${fmtEuroDec(r.valore)}/g`;
+        return `
+          <div class="rank-item">
+            <div class="pos">${i + 1}</div>
+            <div class="name">${r.nome}</div>
+            <div class="val">${val}</div>
+          </div>`;
+      })
+      .join("");
+    return;
+  }
+
+  // --- Modalità normale (Totale stagione / giorno singolo) ---
+  const data = getRankSource(category);
 
   const dayKey = DAY_FILTER[category];
   const days = LAST_DATA.scontrini ? LAST_DATA.scontrini.days : [];
@@ -755,13 +859,52 @@ function renderDayChips(category) {
   wrap.innerHTML = chips
     .map(
       (c) =>
-        `<button class="day-chip${c.key === current ? " active" : ""}" data-day="${encodeURIComponent(c.key)}">${c.label}</button>`
+        `<button class="day-chip${c.key === current && AVG_MODE[category] === null ? " active" : ""}" data-day="${encodeURIComponent(c.key)}">${c.label}</button>`
     )
     .join("");
   wrap.querySelectorAll(".day-chip").forEach((btn) => {
     btn.addEventListener("click", () => {
       DAY_FILTER[category] = decodeURIComponent(btn.dataset.day);
+      AVG_MODE[category] = null; // selezionare un giorno specifico esce dalla modalità media
       renderDayChips(category);
+      renderAvgChips(category);
+      renderRankList(category);
+    });
+  });
+}
+
+/** Seconda fila di pulsanti: Media Totale + media per giorno della settimana (Lun...Dom) */
+function renderAvgChips(category) {
+  const wrapId = category === "piatti" ? "piattiAvgChips" : "bibiteAvgChips";
+  const wrap = document.getElementById(wrapId);
+  if (!wrap) return;
+  if (!LAST_DATA.scontrini || LAST_DATA.scontrini.days.length === 0) {
+    wrap.style.display = "none";
+    wrap.innerHTML = "";
+    return;
+  }
+  wrap.style.display = "flex";
+  const active = AVG_MODE[category];
+  const chips = [{ key: "TOTAL", label: "Media Totale" }].concat(
+    WEEKDAY_LABELS_UI.map((w) => ({ key: `WD:${w.idx}`, label: w.label }))
+  );
+  wrap.innerHTML = chips
+    .map((c) => {
+      const isActive =
+        active !== null &&
+        ((c.key === "TOTAL" && active.weekdayIdx === null) ||
+          (c.key !== "TOTAL" && active.weekdayIdx === parseInt(c.key.split(":")[1], 10)));
+      return `<button class="day-chip avg-chip${isActive ? " active" : ""}" data-avg="${c.key}">${c.label}</button>`;
+    })
+    .join("");
+  wrap.querySelectorAll(".avg-chip").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const key = btn.dataset.avg;
+      const weekdayIdx = key === "TOTAL" ? null : parseInt(key.split(":")[1], 10);
+      AVG_MODE[category] = { weekdayIdx };
+      DAY_FILTER[category] = "ALL"; // la selezione media prevale sul giorno singolo
+      renderDayChips(category);
+      renderAvgChips(category);
       renderRankList(category);
     });
   });
@@ -774,6 +917,8 @@ function renderAll() {
   renderComparisonTable();
   renderDayChips("piatti");
   renderDayChips("bibite");
+  renderAvgChips("piatti");
+  renderAvgChips("bibite");
   renderRankList("piatti");
   renderRankList("bibite");
 
