@@ -239,6 +239,7 @@ section.panel.active { display: block; }
   scrollbar-width: none;
 }
 .day-chips::-webkit-scrollbar { display: none; }
+.avg-chips-row { margin-top: -6px; }
 .day-chip {
   flex: 0 0 auto;
   white-space: nowrap;
