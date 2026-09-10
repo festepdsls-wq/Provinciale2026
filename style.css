@@ -204,6 +204,20 @@ section.panel.active { display: block; }
   text-transform: uppercase;
   letter-spacing: 0.03em;
 }
+.cmp-row .status-tag {
+  display: block;
+  margin-top: 3px;
+  padding: 2px 6px;
+  border-radius: 6px;
+  font-size: 8px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: #ffffff;
+  width: fit-content;
+}
+.cmp-row .status-tag.closed-turno { background: var(--navy); }
+.cmp-row .status-tag.closed-weather { background: #6b0f14; }
 .cmp-row .c-num { text-align: right; line-height: 1.2; }
 .cmp-row .c-num .v26 {
   display: block;
