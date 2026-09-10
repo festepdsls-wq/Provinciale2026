@@ -599,6 +599,21 @@ function computeAverageRanking(category, weekdayIdx) {
 // sempre per queste, indipendentemente da come arrivano i dati dal foglio.
 const DOUBLE_TURNO_DATES = ["06/09", "13/09"];
 
+// Chiusure straordinarie o ricorrenti: chiave "gg/mm" -> { label, cls }.
+// I lunedì sono chiusura ricorrente (gestita sotto via giorno della settimana),
+// qui vanno solo le eccezioni puntuali (es. maltempo).
+const CLOSURE_EXCEPTIONS = {
+  "10/09": { label: "CHIUSO PER PIOGGIA", cls: "closed-weather" },
+};
+
+/** Restituisce { label, cls } se il giorno è chiuso (eccezione puntuale o lunedì), altrimenti null */
+function getClosureTag(dateKey) {
+  if (!dateKey) return null;
+  if (CLOSURE_EXCEPTIONS[dateKey]) return CLOSURE_EXCEPTIONS[dateKey];
+  if (getWeekdayIndex(dateKey) === 1) return { label: "CHIUSO PER TURNO", cls: "closed-turno" };
+  return null;
+}
+
 // Modalità diagnostica: apri l'app con ?debug=1 in fondo all'URL per vedere i dati grezzi ricevuti.
 const DEBUG_MODE = new URLSearchParams(location.search).get("debug") === "1";
 if (DEBUG_MODE) {
@@ -657,11 +672,13 @@ function renderComparisonTable() {
         DOUBLE_TURNO_DATES.includes(r.dateKey) || r.turni26 > 1
           ? '<span class="turno-tag">2 turni</span>'
           : "";
+      const closure = getClosureTag(r.dateKey);
+      const closureTag = closure ? `<span class="status-tag ${closure.cls}">${closure.label}</span>` : "";
       const scontrino26 = r.cop26 > 0 ? r.inc26 / r.cop26 : 0;
       const scontrino25 = r.cop25 > 0 ? r.inc25 / r.cop25 : 0;
       return `
         <div class="cmp-row ${isLastUpdate ? "is-last-update" : ""}">
-          <div class="c-day">${r.displayLabel}${turnoTag}</div>
+          <div class="c-day">${r.displayLabel}${turnoTag}${closureTag}</div>
           <div class="c-num">
             <span class="v26">${fmtEuro(r.inc26)}</span>
             <span class="v25">${fmtEuro(r.inc25)}</span>
