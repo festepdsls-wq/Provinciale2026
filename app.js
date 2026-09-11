@@ -257,19 +257,31 @@ function groupByDate(rows) {
 }
 
 /**
- * Accoppia riga per riga (stesso indice = stesso giorno di calendario, dato che
- * i due range 2026/2025 arrivano dalle stesse righe del foglio) i dati dei due anni.
+ * Accoppia i dati dei due anni per DATA DI CALENDARIO (dateKey "dd/mm"), non più
+ * per posizione di riga nel foglio. In precedenza si assumeva che la riga N della
+ * colonna 2026 corrispondesse sempre alla riga N della colonna 2025: se le due
+ * colonne nel foglio Google Sheets si disallineano anche di una sola riga (data
+ * mancante, turno pranzo inserito solo da un lato, riga in più/meno...), il
+ * confronto scivolava e finiva per paragonare date diverse tra loro. Indicizzando
+ * il 2025 per dateKey il confronto resta corretto indipendentemente da come sono
+ * disposte le righe nel foglio.
  */
 function buildComparisonRows(rows2026, rows2025) {
-  const len = Math.max(rows2026.length, rows2025.length);
+  // In caso di dateKey duplicata nel 2025 (non dovrebbe succedere dopo groupByDate,
+  // che accorpa già le righe con la stessa data) vince la prima occorrenza con dati.
+  const byDateKey25 = new Map();
+  rows2025.forEach((r) => {
+    if (r.dateKey && !byDateKey25.has(r.dateKey)) byDateKey25.set(r.dateKey, r);
+  });
+  const emptyRow = { dataLabel: "", displayLabel: "", coperti: 0, incasso: 0 };
+
   const out = [];
-  for (let i = 0; i < len; i++) {
-    const r26 = rows2026[i] || { dataLabel: "", coperti: 0, incasso: 0 };
-    const r25 = rows2025[i] || { dataLabel: "", coperti: 0, incasso: 0 };
+  rows2026.forEach((r26, i) => {
+    const r25 = (r26.dateKey && byDateKey25.get(r26.dateKey)) || emptyRow;
     const label = r26.dataLabel || r25.dataLabel;
     const hasData26 = r26.incasso > 0 || r26.coperti > 0;
     const hasData25 = r25.incasso > 0 || r25.coperti > 0;
-    if (!label || (!hasData26 && !hasData25)) continue;
+    if (!label || (!hasData26 && !hasData25)) return;
     out.push({
       dataLabel: label,
       displayLabel: r26.displayLabel || r25.displayLabel || label,
@@ -284,7 +296,7 @@ function buildComparisonRows(rows2026, rows2025) {
       hasData26,
       idx26: i,
     });
-  }
+  });
   return out;
 }
 
