@@ -9,8 +9,8 @@ const CONFIG = {
 
   // Range del foglio "riepilogo" — confermati fissi dall'utente, nessuna ulteriore modifica prevista.
   RANGES: {
-    coperti2026: "B17:E46",   // DATA | COPERTI | $/PASTO | INCASSO
-    coperti2025: "G17:J46",   // DATA | COPERTI | $/PASTO | INCASSO
+    coperti2026: "B17:E44",   // DATA | COPERTI | $/PASTO | INCASSO
+    coperti2025: "G17:J44",   // DATA | COPERTI | $/PASTO | INCASSO
     piattiNr:    "M5:N26",    // DESCRIZIONE | NR
     piattiEuro:  "P5:Q26",    // DESCRIZIONE | €
     bibiteNr:    "M28:N50",   // DESCRIZIONE | NR
