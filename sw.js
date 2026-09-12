@@ -1,4 +1,4 @@
-const CACHE_NAME = "provinciale26-shell-v36";
+const CACHE_NAME = "provinciale26-shell-v37";
 const SHELL_FILES = [
   "./index.html",
   "./style.css",
