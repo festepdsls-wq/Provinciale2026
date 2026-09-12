@@ -257,36 +257,32 @@ function groupByDate(rows) {
 }
 
 /**
- * Accoppia i dati dei due anni per DATA DI CALENDARIO (dateKey "dd/mm"), non più
- * per posizione di riga nel foglio. In precedenza si assumeva che la riga N della
- * colonna 2026 corrispondesse sempre alla riga N della colonna 2025: se le due
- * colonne nel foglio Google Sheets si disallineano anche di una sola riga (data
- * mancante, turno pranzo inserito solo da un lato, riga in più/meno...), il
- * confronto scivolava e finiva per paragonare date diverse tra loro. Indicizzando
- * il 2025 per dateKey il confronto resta corretto indipendentemente da come sono
- * disposte le righe nel foglio.
+ * Accoppia i dati dei due anni per SEQUENZA DI VENDITA: l'N-esimo giorno di
+ * apertura del 2026 va confrontato con l'N-esimo giorno di apertura del 2025,
+ * ignorando le chiusure di entrambi gli anni — anche quando cadono su giorni
+ * della settimana diversi (il 2025 chiude il martedì, il 2026 il lunedì).
+ * Le etichette di data nelle due colonne del foglio sono identiche per comodità
+ * di compilazione, non perché rappresentino la stessa data reale: NON vanno
+ * quindi usate per l'abbinamento.
  */
 function buildComparisonRows(rows2026, rows2025) {
-  // In caso di dateKey duplicata nel 2025 (non dovrebbe succedere dopo groupByDate,
-  // che accorpa già le righe con la stessa data) vince la prima occorrenza con dati.
-  const byDateKey25 = new Map();
-  rows2025.forEach((r) => {
-    if (r.dateKey && !byDateKey25.has(r.dateKey)) byDateKey25.set(r.dateKey, r);
-  });
+  // Sequenza dei soli giorni 2025 in cui si è davvero venduto, nell'ordine del foglio.
+  const sold2025 = rows2025.filter((r) => r.incasso > 0 || r.coperti > 0);
   const emptyRow = { dataLabel: "", displayLabel: "", coperti: 0, incasso: 0 };
 
   const out = [];
+  let saleIndex = 0; // quanti giorni di vendita 2026 sono già stati incontrati
   rows2026.forEach((r26, i) => {
-    const r25 = (r26.dateKey && byDateKey25.get(r26.dateKey)) || emptyRow;
-    const label = r26.dataLabel || r25.dataLabel;
     const hasData26 = r26.incasso > 0 || r26.coperti > 0;
+    const r25 = hasData26 ? sold2025[saleIndex++] || emptyRow : emptyRow;
+    const label = r26.dataLabel;
     const hasData25 = r25.incasso > 0 || r25.coperti > 0;
     if (!label || (!hasData26 && !hasData25)) return;
     out.push({
       dataLabel: label,
-      displayLabel: r26.displayLabel || r25.displayLabel || label,
-      dateKey: r26.dateKey || r25.dateKey,
-      turno: r26.turno || r25.turno || "cena",
+      displayLabel: r26.displayLabel || label,
+      dateKey: r26.dateKey,
+      turno: r26.turno || "cena",
       turni26: r26.turni || 1,
       inc26: r26.incasso,
       inc25: r25.incasso,
