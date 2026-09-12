@@ -257,13 +257,38 @@ function groupByDate(rows) {
 }
 
 /**
+ * Rimuove le righe "assorbite" da groupByDate: quando due righe condividono la
+ * stessa data (es. pranzo scritto su una riga e cena sull'altra), groupByDate
+ * somma tutto sulla PRIMA riga incontrata e azzera la seconda, lasciandola però
+ * al suo posto nell'array. Senza questo filtro quella riga azzerata sembra un
+ * "giorno ancora senza dati" — nella tabella posizionale mostrerebbe uno zero
+ * falso, nel confronto a sequenza consumerebbe un giorno di vendita 2025 di
+ * troppo, sfasando tutti i giorni successivi. La si toglie qui, un'unica volta,
+ * cosicché entrambe le funzioni di confronto lavorino su dati già puliti.
+ */
+function dedupeAbsorbedRows(rows) {
+  const seen = new Set();
+  const out = [];
+  for (const r of rows) {
+    if (r.dateKey) {
+      if (seen.has(r.dateKey)) continue;
+      seen.add(r.dateKey);
+    }
+    out.push(r);
+  }
+  return out;
+}
+
+/**
  * Accoppia i dati dei due anni RIGA PER RIGA (stessa posizione nel foglio), senza
  * saltare nulla: se un anno era chiuso quel giorno il valore resta 0 e viene
  * mostrato così com'è. Serve per la tabella "giorno per giorno", dove conta sapere
  * esattamente cosa è successo in quello specifico giorno (utile a cucina e ordini),
  * non per un confronto "a parità di giorni di vendita".
  */
-function buildComparisonRowsPositional(rows2026, rows2025) {
+function buildComparisonRowsPositional(rows2026raw, rows2025raw) {
+  const rows2026 = dedupeAbsorbedRows(rows2026raw);
+  const rows2025 = dedupeAbsorbedRows(rows2025raw);
   const emptyRow = { dataLabel: "", displayLabel: "", coperti: 0, incasso: 0 };
   const len = Math.max(rows2026.length, rows2025.length);
 
@@ -316,7 +341,9 @@ function buildComparisonRowsPositional(rows2026, rows2025) {
  * sequenza per un solo giorno di calendario (la trattazione va sulla riga
  * "cena" principale).
  */
-function buildComparisonRowsBySequence(rows2026, rows2025) {
+function buildComparisonRowsBySequence(rows2026raw, rows2025raw) {
+  const rows2026 = dedupeAbsorbedRows(rows2026raw);
+  const rows2025 = dedupeAbsorbedRows(rows2025raw);
   // Sequenza dei soli giorni 2025 in cui si è davvero venduto, nell'ordine del foglio.
   const sold2025 = rows2025.filter((r) => r.incasso > 0 || r.coperti > 0);
   const emptyRow = { dataLabel: "", displayLabel: "", coperti: 0, incasso: 0 };
