@@ -264,6 +264,16 @@ function groupByDate(rows) {
  * Le etichette di data nelle due colonne del foglio sono identiche per comodità
  * di compilazione, non perché rappresentino la stessa data reale: NON vanno
  * quindi usate per l'abbinamento.
+ *
+ * Per i giorni 2026 ancora futuri (senza dati) la sequenza continua ad avanzare
+ * ugualmente: mostra così in anteprima il prossimo giorno di vendita 2025,
+ * utile a cucina e ordini per sapere quanto preparare/ordinare nei prossimi
+ * giorni. Le chiusure note (lunedì, eccezioni) non consumano un giorno di
+ * vendita 2025, altrimenti la sequenza si sfaserebbe rispetto ai giorni
+ * davvero aperti. La riga "P" ausiliaria di un giorno a doppio turno non
+ * ancora avvenuto viene anch'essa saltata, per non consumare due volte la
+ * sequenza per un solo giorno di calendario (la trattazione va sulla riga
+ * "cena" principale).
  */
 function buildComparisonRows(rows2026, rows2025) {
   // Sequenza dei soli giorni 2025 in cui si è davvero venduto, nell'ordine del foglio.
@@ -271,10 +281,13 @@ function buildComparisonRows(rows2026, rows2025) {
   const emptyRow = { dataLabel: "", displayLabel: "", coperti: 0, incasso: 0 };
 
   const out = [];
-  let saleIndex = 0; // quanti giorni di vendita 2026 sono già stati incontrati
+  let saleIndex = 0; // quanti giorni di vendita sono già stati incontrati/anticipati
   rows2026.forEach((r26, i) => {
     const hasData26 = r26.incasso > 0 || r26.coperti > 0;
-    const r25 = hasData26 ? sold2025[saleIndex++] || emptyRow : emptyRow;
+    const isClosure = !!getClosureTag(r26.dateKey);
+    const isFuturePranzoFiller = !hasData26 && r26.turno === "pranzo";
+    const consume = hasData26 || (!isClosure && !isFuturePranzoFiller);
+    const r25 = consume ? sold2025[saleIndex++] || emptyRow : emptyRow;
     const label = r26.dataLabel;
     const hasData25 = r25.incasso > 0 || r25.coperti > 0;
     if (!label || (!hasData26 && !hasData25)) return;
