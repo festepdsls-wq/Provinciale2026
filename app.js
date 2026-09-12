@@ -257,6 +257,43 @@ function groupByDate(rows) {
 }
 
 /**
+ * Accoppia i dati dei due anni RIGA PER RIGA (stessa posizione nel foglio), senza
+ * saltare nulla: se un anno era chiuso quel giorno il valore resta 0 e viene
+ * mostrato così com'è. Serve per la tabella "giorno per giorno", dove conta sapere
+ * esattamente cosa è successo in quello specifico giorno (utile a cucina e ordini),
+ * non per un confronto "a parità di giorni di vendita".
+ */
+function buildComparisonRowsPositional(rows2026, rows2025) {
+  const emptyRow = { dataLabel: "", displayLabel: "", coperti: 0, incasso: 0 };
+  const len = Math.max(rows2026.length, rows2025.length);
+
+  const out = [];
+  for (let i = 0; i < len; i++) {
+    const r26 = rows2026[i] || emptyRow;
+    const r25 = rows2025[i] || emptyRow;
+    const label = r26.dataLabel || r25.dataLabel;
+    const hasData26 = r26.incasso > 0 || r26.coperti > 0;
+    const hasData25 = r25.incasso > 0 || r25.coperti > 0;
+    if (!label || (!hasData26 && !hasData25)) continue;
+    out.push({
+      dataLabel: label,
+      displayLabel: r26.displayLabel || r25.displayLabel || label,
+      dateKey: r26.dateKey || r25.dateKey,
+      turno: r26.turno || r25.turno || "cena",
+      turni26: r26.turni || 1,
+      inc26: r26.incasso,
+      inc25: r25.incasso,
+      cop26: r26.coperti,
+      cop25: r25.coperti,
+      diff: r26.incasso - r25.incasso,
+      hasData26,
+      idx26: i,
+    });
+  }
+  return out;
+}
+
+/**
  * Accoppia i dati dei due anni per SEQUENZA DI VENDITA: l'N-esimo giorno di
  * apertura del 2026 va confrontato con l'N-esimo giorno di apertura del 2025,
  * ignorando le chiusure di entrambi gli anni — anche quando cadono su giorni
@@ -264,6 +301,10 @@ function groupByDate(rows) {
  * Le etichette di data nelle due colonne del foglio sono identiche per comodità
  * di compilazione, non perché rappresentino la stessa data reale: NON vanno
  * quindi usate per l'abbinamento.
+ *
+ * Usata SOLO per il totale cumulato in alto (KPI): lì conta sapere "a che punto
+ * siamo rispetto allo stesso numero di giorni di vendita del 2025", non cosa è
+ * successo giorno per giorno — quello lo mostra invece buildComparisonRowsPositional.
  *
  * Per i giorni 2026 ancora futuri (senza dati) la sequenza continua ad avanzare
  * ugualmente: mostra così in anteprima il prossimo giorno di vendita 2025,
@@ -275,7 +316,7 @@ function groupByDate(rows) {
  * sequenza per un solo giorno di calendario (la trattazione va sulla riga
  * "cena" principale).
  */
-function buildComparisonRows(rows2026, rows2025) {
+function buildComparisonRowsBySequence(rows2026, rows2025) {
   // Sequenza dei soli giorni 2025 in cui si è davvero venduto, nell'ordine del foglio.
   const sold2025 = rows2025.filter((r) => r.incasso > 0 || r.coperti > 0);
   const emptyRow = { dataLabel: "", displayLabel: "", coperti: 0, incasso: 0 };
@@ -669,7 +710,7 @@ function diffBits(diff) {
 }
 
 function renderComparisonTable() {
-  const cmp = buildComparisonRows(LAST_DATA.coperti2026, LAST_DATA.coperti2025);
+  const cmp = buildComparisonRowsPositional(LAST_DATA.coperti2026, LAST_DATA.coperti2025);
   const list = document.getElementById("dayList");
 
   if (cmp.length === 0) {
@@ -719,7 +760,7 @@ function renderComparisonTable() {
 }
 
 function renderTotalDiff() {
-  const cmp = buildComparisonRows(LAST_DATA.coperti2026, LAST_DATA.coperti2025);
+  const cmp = buildComparisonRowsBySequence(LAST_DATA.coperti2026, LAST_DATA.coperti2025);
   const c = computeCumulativeComparison(cmp);
   const noteEl = document.getElementById("kpiNote");
 
