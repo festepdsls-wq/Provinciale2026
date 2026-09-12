@@ -354,7 +354,11 @@ function buildComparisonRowsBySequence(rows2026raw, rows2025raw) {
     const hasData26 = r26.incasso > 0 || r26.coperti > 0;
     const isClosure = !!getClosureTag(r26.dateKey);
     const isFuturePranzoFiller = !hasData26 && r26.turno === "pranzo";
-    const consume = hasData26 || (!isClosure && !isFuturePranzoFiller);
+    // Riga senza etichetta di data (es. una vecchia riga nascosta, azzerata solo nei
+    // valori ma non nella data): non rappresenta un vero giorno di festa, quindi non
+    // deve consumare un giorno di vendita 2025 — altrimenti sfasa tutto ciò che segue.
+    const isBlankFiller = !r26.dataLabel;
+    const consume = hasData26 || (!isClosure && !isFuturePranzoFiller && !isBlankFiller);
     const r25 = consume ? sold2025[saleIndex++] || emptyRow : emptyRow;
     const label = r26.dataLabel;
     const hasData25 = r25.incasso > 0 || r25.coperti > 0;
