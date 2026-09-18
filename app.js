@@ -13,8 +13,8 @@ const CONFIG = {
     coperti2025: "G17:J44",   // DATA | COPERTI | $/PASTO | INCASSO
     piattiNr:    "M5:N26",    // DESCRIZIONE | NR
     piattiEuro:  "P5:Q26",    // DESCRIZIONE | €
-    bibiteNr:    "M28:N50",   // DESCRIZIONE | NR
-    bibiteEuro:  "P28:Q50",   // DESCRIZIONE | €
+    bibiteNr:    "M28:N51",   // DESCRIZIONE | NR
+    bibiteEuro:  "P28:Q51",   // DESCRIZIONE | €
   },
 
   // Ogni quanti secondi ricontrollare i dati
